@@ -94,7 +94,8 @@ def exportdb(dbsession, mgsession):
             mongodb_tags = []
             for tag in tags:
                 mongodb_tags.append(tag2id(tag, dbsession))
-                mgsession.db["item"].insert({"item_id": item.id, "tags": mongodb_tags})
+                print "mongodb: insert ('%s', '%s') item to %s" % (item.id, mongodb_tags, mgsession)
+                mgsession["item"].insert({"item_id": item.id, "tags": mongodb_tags})
 
 def tag2id(tagname, dbsession):
     tagRow = dbsession.query(Tag).filter(Tag.name == tagname).first()
