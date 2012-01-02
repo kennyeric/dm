@@ -4,11 +4,16 @@ import datetime
 from sqlalchemy import create_engine
 from sqlalchemy import Column, Integer
 
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import ColumnDefault
 from sqlalchemy.ext.declarative import declarative_base
 
 #sqlalchemy lib for mysql dialect
 from sqlalchemy.dialects.mysql import VARCHAR,DATETIME
+
+#pymongodb lib
+from gridfs import GridFS
+import pymongo
 
 #Base class for mapping data model
 Base = declarative_base()
@@ -71,8 +76,41 @@ class Tag(Base):
     def __repr__(self):
         return "<Tag('%s', '%s')>" % (self.name, self.pinyin)
 
+#mongodb initialize
+def create_mongodb_session():
+    db_uri = "mongodb://localhost:27017/" 
+    db_name = "wodfan" 
+    conn = pymongo.Connection(db_uri)
+    return conn[db_name]
+
+#global func, export mysql data to mongodb
+def exportdb(dbsession, mgsession):
+    items = dbsession.query(Item).limit(10)
+    for item in items:
+        tagsString = item.tags.strip()
+        tagsString = tagsString[0:len(tagsString) - 1]
+        if tagsString != "":
+            tags = tagsString.split(";")
+            mongodb_tags = []
+            for tag in tags:
+                mongodb_tags.append(tag2id(tag, dbsession))
+                mgsession.db["item"].insert({"item_id": item.id, "tags": mongodb_tags})
+
+def tag2id(tagname, dbsession):
+    tagRow = dbsession.query(Tag).filter(Tag.name == tagname).first()
+    id = -1
+    if tagRow:
+        if tagRow.id:
+            id = tagRow.id
+        return id
+    else:
+        return id
+
 #main function, the entrance of the program
 if __name__ == "__main__":
-    #engine = create_engine(db_uri)
-    print Tag.__table__
+    mgsession = create_mongodb_session() 
+    engine = create_engine(db_uri)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    exportdb(session, mgsession)
 
