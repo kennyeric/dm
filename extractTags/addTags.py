@@ -1,6 +1,7 @@
 #coding=utf-8
 
 import datetime
+import random
 
 #sqlalchemy common lib
 from sqlalchemy import create_engine
@@ -17,7 +18,7 @@ from sqlalchemy.dialects.mysql import VARCHAR,DATETIME
 Base = declarative_base()
 
 #mysql db's uri
-db_uri = "mysql+mysqldb://root:root@localhost:3306/wodfan_tag_2?charset=utf8"
+db_uri = "mysql+mysqldb://root:root@localhost:3306/wodfan_tag_2_0212?charset=utf8"
 
 #data model mapping
 class Item(Base):
@@ -95,8 +96,9 @@ class Category(Base):
 
 def getTags(dbsession):
     tags = dbsession.query(Tag)
-    items = dbsession.query(Item).filter(Item.id == 196206).all()
+    items = dbsession.query(Item)
     #temp = open('temp', 'w')
+    seasons = [u'冷', u'暖'];
     for item in items:
         tagsDict= dict() 
         baseCats = '' 
@@ -111,26 +113,44 @@ def getTags(dbsession):
 
             baseCategory = findBaseCategory(dbsession, item.category, baseCats)
             print baseCats
-            finalTags = baseCategory + ";"
+            currentSeason = seasons[random.randint(0, 1)]
+
+            finalTags = []
+            finalTags.append(baseCategory)
+            finalTags.append(currentSeason)
             
             #print '>>>>>>>>>>>>>>>>>>>>>>>>>>>' + baseCategory + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<' +'\n'
 
             print '>>>>>>>>>>>>>>>>>>>>>>>>>>>' + str(item.id) + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<' +'\n'
-            #print tagsDict.items()
-
+            print ';'.join(tagsDict.keys())
+            
+            colorFilter(tags, tagsDict, finalTags)
+            
             for k in tagsDict.keys():
                 if k != baseCategory and not isConflict(baseCategory, k, baseCats):
-                   finalTags += k + ";" 
+                   finalTags.append(k) 
 
             #print '****************************************************************************' + '\n'  
-            finalTags = finalTags[0:len(finalTags) - 1]
+            finalTags = ';'.join(finalTags)
             print finalTags
-            #dbsession.execute('update items set tags="' + finalTags + '" where item_id=' + str(item.id))
+             
+            sql = 'update items set tags="' + finalTags + '" where item_id=' + str(item.id)
+            dbsession.execute(sql)
             #temp.writelines('update items set tags="' + finalTags + '" where item_id=' + str(item.id)) 
             #item.tags = finalTags
             #dbsession.add(item)
             #dbsession.flush()
 
+def colorFilter(tags, tagsDict, finalTags):  
+    for k in tagsDict.keys():
+        if k.find(u'色') != -1:
+            for tag in tags:
+                if tag.type == 0:
+                    #print tag.name + ":" + k 
+                    if tag.name == k:
+                        print ">>>>>>" + k
+                        finalTags.append(k)
+                        del tagsDict[k]
 
 def isConflict(inBaseCat, judgeTag, baseCats):    
     f = False
